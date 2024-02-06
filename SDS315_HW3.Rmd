@@ -1,0 +1,103 @@
+---
+title: "Homework 3"
+author: "Juhi Malwade - jm97555"
+date: "2/1/2024"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height=4, fig.width=7,fig.align = "left", warning=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+[Github Link](https://github.com/juhimalwade/SDS315.git)
+
+## Problem 1: Creatinine Clearance Rates
+
+```{r, message=FALSE, echo = FALSE, include = FALSE}
+creat <- read.csv("creatinine.csv")
+library(tidyverse)
+library(mosaic)
+library(ggplot2)
+model_creat <- lm(creatclear ~ age, data = creat)
+coef(model_creat)
+coef(model_creat)[1] + 55*coef(model_creat)[2] 
+
+```
+
+```{r,message=FALSE, echo = FALSE, fig.width = 4, fig.height=2.5, fig.align = "center"}
+ggplot(creat, aes(x=age,y=creatclear)) + geom_point() + geom_smooth(method = 'lm') + labs(title = "Creatinine clearance rate by Age", 
+                                                                                          x = "Age", y = "Clearance rate (mL/min)") + theme(text = element_text(size=8))
+```
+**Part A**
+
+A 55-year old is expected to have a creatinine clearance rate of 113.72 mL/minute. I calculated this by creating a linear regression model for the creatinine data. After using the coef() function, I found that the equation was y=147.8-0.62x where y=creatinine clearance rate and x=age. Using this equation, I predicted that the rate for a 55-year old is 113.72 mL/minute.
+
+**Part B**
+
+For every one year increase in age, the expected creatinine clearance rate decreases by 0.62 mL/minute. This is because the slope of the linear regression line is -0.62, so every time x (age) increases by one, y (clearance rate) decreases by 0.62.
+
+**Part C**
+```{r, echo = FALSE, include = FALSE}
+#residual = actual - predicted
+135 - (coef(model_creat)[1] + 40*coef(model_creat)[2])
+112 - (coef(model_creat)[1] + 60*coef(model_creat)[2])
+```
+A 40-year old with a rate of 135 has a healthier creatinine clearance rate than a 60-year old with a rate of 112. Because some of the variation in rates is due to difference in age, it is not fair to simply compare the rates to determine who is healthier; instead, the residuals (actual - predicted) must be compared. Using the linear regression model from above (y=147.8-0.62x), I determined that the predicted rate for the 40-year old was 123.02 and 110.62 for the 60-year old. Subtracting the predicted values from the actual values,the 40-year old had a residual of 11.98 (135 - 123.02) and the 60-year old had a residual of 1.38 (112 - 110.62). Because the 40-year old had a larger residual and thus a higher rate for her age, they had a healthier creatinine clearance rate compared to the 60-year old.
+
+\newpage
+## Problem 2: Capital Asset Pricing Model
+
+Beta is a measure of systematic risk for firms. When firms have a beta greater than one, they have higher systematic risk than the average firm, while firms with a beta less than one have less systematic risk. Beta can be found from the equation Y~t~ = $\beta$~0~ + $\beta$~1~X~t~ + e~t~, where Y~t~ is the rate of return of an individual stock and X~t~ is the rate of return of the entire stock market (measured by S&P 500). Thus, $\beta$~1~ measures how much the rate of return of an individual stock changes when the rate of return of the entire stock market increases by 1. When $\beta$~1~ is higher, a stock is more reactive to change and thus carries more systematic risk. If a firm had a $\beta$~1~ of zero, it would carry no systematic risk, where the firm's return would not be affected by the return of the market portfolio at all. $\beta$~1~ is calculated by graphing X~t~ and Y~t~ for each firm and finding the slope of the linear regression line. 
+
+```{r, echo = FALSE, message = FALSE, fig.height=4, fig.width=7}
+market <- read.csv('marketmodel.csv')
+
+model_aapl <- lm(AAPL~SPY,data=market)
+model_goog <- lm(GOOG~SPY, data=market)
+model_mrk <- lm(MRK~SPY,data=market)
+model_jnj <- lm(JNJ~SPY, data=market)
+model_wmt <- lm(WMT~SPY, data=market)
+model_tgt <- lm(TGT~SPY, data=market)
+
+market_reg<- tibble("ticker_symbol"=colnames(market)[3:8], "intercept" = c(coef(model_aapl)[1], coef(model_goog)[1], coef(model_mrk)[1], coef(model_jnj)[1], coef(model_wmt)[1], coef(model_tgt)[1]), "slope" = c(coef(model_aapl)[2], coef(model_goog)[2], coef(model_mrk)[2], coef(model_jnj)[2], coef(model_wmt)[2], coef(model_tgt)[2]), "$R^2$" = c(rsquared(model_aapl),rsquared(model_goog),rsquared(model_mrk),rsquared(model_jnj),rsquared(model_wmt),rsquared(model_tgt)))
+
+library(knitr)
+
+knitr::kable(market_reg)
+
+```
+The table shows the intercept, slope, and $R^2$ of linear regression models for 6 individual stocks: Apple, Google, Merck, Johnson and Johnson, Walmart, and Target. The intercept term represents $\beta$~0~ (alpha), the slope represents $\beta$~1~ (systematic risk risk), and $R^2$ represents the strength of the linear association between the individual stocks and the overall market portfolio. 
+
+In conclusion, Walmart has the lowest systematic risk because it has the smallest $\beta$~1~ (slope) of 0.52. Apple has the highest systematic risk because it has the largest $\beta$~1~ of 1.07. 
+
+<br>
+
+## Problem 3: COVID-19 Deaths
+```{r, echo=FALSE,message=FALSE}
+covid <- read.csv("covid.csv")
+covid_spain <- covid[covid$country == "Spain",]
+covid_italy <- covid[covid$country == "Italy",]
+
+ggplot(covid) + geom_line(aes(x=days_since_first_death,y=deaths,col = country)) + labs(title = "Covid-19 Deaths in Italy and Spain", x = "Days since first death", y = "Deaths")
+
+spain_model <- lm(log(deaths)~days_since_first_death, data = covid_spain)
+spain_growth <- round(coef(spain_model)[2],3)
+spain_dt <- round(70/(coef(spain_model)[2]*100),0)
+
+italy_model <- lm(log(deaths)~days_since_first_death, data = covid_italy)
+italy_growth <- round(coef(italy_model)[2],3)
+italy_dt <- round(70/(coef(italy_model)[2]*100),0)
+```
+The line graph shows the daily Covid-19 deaths in Spain and Italy. The red line represents the deaths in Italy and the blue line represents the deaths in Spain. Italy had a growth rate of 0.183 (18.3%) while Spain had a growth rate of 0.276 (27.6%). In addition, Italy had a doubling time of approximately 4 days while Spain had a doubling time of approximately 3 days. These statistics along with the graph indicate that the number of Covid-19 deaths increased at a faster rate in Spain than Italy.
+
+## Problem 4: Milk
+```{r, echo=FALSE, message=FALSE}
+milk <- read.csv("milk.csv")
+
+model_milk <- lm(log(sales)~log(price), data = milk)
+PED <- coef(model_milk)[2]
+
+```
+The estimated price elasticity of demand (PED) is -1.62. The power law is Q=KP^$\beta$^, where Q is the number of sales, P is the price, and $\beta$ is PED. To find $\beta$, I took the natural log of both sides of the equation: log(Q) = log(K) + $\beta$log(P). Then, I created a linear regression model where x=log(P) and y=log(Q). The slope of this line was -1.62, which corresponded to a $\beta$ of -1.62. This indicated that as the price of milk increased, the quantity demanded decreased.
