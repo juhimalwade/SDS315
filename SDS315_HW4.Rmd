@@ -1,0 +1,239 @@
+---
+title: "Homework 4"
+author: "Juhi Malwade - jm97555"
+date: "2/18/2024"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height=3, fig.width=7,fig.align = "left", warning=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+[Github Link](https://github.com/juhimalwade/SDS315.git)
+
+# Problem 1: Gas Prices
+
+## **Claim 1**: Gas stations charge more if they lack direct competition in sight  
+```{r,message=FALSE, echo = FALSE, include = FALSE}
+library(tidyverse)
+library(mosaic)
+library(ggplot2)
+library(dplyr)
+
+gas <- read.csv("gasprices.csv")
+```
+
+**Evidence:**
+```{r, echo = FALSE, message = FALSE}
+boot_gas_comp = do(10000)*diffmean(Price ~ Competitors,data=resample(gas))
+ggplot(boot_gas_comp) + geom_histogram(aes(x=diffmean)) + labs(title = "Bootstrap sampling distribution for difference in mean gas\n prices between gas stations with and without competitors", x = "Mean difference", y = "Count")
+```
+```{r, echo = FALSE, message = FALSE}
+knitr::kable(confint(boot_gas_comp, level = 0.95))
+
+```
+The histogram above represents the bootstrap sampling distribution for the difference in mean gas prices between gas stations with competitors and no competitors. After calculating a confidence interval with a level of 0.95, I found that the difference in price between gas stations with and without competitors is somewhere between $`r format(round(confint(boot_gas_comp, level = 0.95)[1,2],2),scientific=FALSE)` and  $`r format(round(confint(boot_gas_comp, level = 0.95)[1,3],2),scientific=FALSE)`, with 95% confidence. 
+
+**Conclusion:**
+
+Because the 95% confidence interval contains 0, indicating that there are both positive and negative differences in gas prices within the confidence interval, the theory that gas stations charge more if they lack direct competition in sight is not supported.
+
+## **Claim 2**: The richer the area, the higher the gas prices.
+
+**Evidence:**
+
+```{r, echo = FALSE, message = FALSE}
+boot_gas_rich = do(10000)*lm(Price ~ Income,data=mosaic::resample(gas))
+knitr::kable(confint(boot_gas_rich, level = 0.95))
+```
+
+To collect evidence for the claim, I created 10,000 bootstrap samples from the original dataset. For each bootstrap sample, I refit a linear regression model for Income versus Gas Price. Based on the 95% confidence interval shown above, we are 95% confident the slope of Income versus Gas Price is between $`r confint(boot_gas_rich, level = 0.95)[2,2]` and  $`r confint(boot_gas_rich, level = 0.95)[2,3]` - or equivalently, the gas price increases between $`r round(confint(boot_gas_rich, level = 0.95)[2,2]*100000,2)` and  $`r round(confint(boot_gas_rich, level = 0.95)[2,3]*100000,2)` for every $100,000 increase in income with 95% confidence.
+
+**Conclusion:**
+
+Because the confidence interval is positive and does not contain zero, there is a statistically significant relationship between how rich an area is and gas prices. Thus, the theory that "the richer the area, the higher the gas prices" is supported. However, because the increase in gas prices with the increase in income is very small, this theory generally does not matter that much in the real world. 
+
+## **Claim 3**: Gas stations at stoplights charge more.
+
+**Evidence:**
+
+```{r, echo = FALSE, message = FALSE}
+boot_gas_stop = do(10000)*diffmean(Price ~ Stoplight,data=resample(gas))
+ggplot(boot_gas_stop) + geom_histogram(aes(x=diffmean)) + labs(title = "Bootstrap sampling distribution for difference in mean gas\n prices between gas stations at and not at stoplights", x = "Mean difference", y = "Count")
+```
+```{r, echo = FALSE, message = FALSE}
+knitr::kable(confint(boot_gas_stop, level = 0.95))
+```
+To collect evidence for the claim, I created 10,000 bootstrap samples from the original dataset. For each bootstrap sample, I calculated the mean difference in gas price for gas stations at stoplights and not at stoplights. The histogram above represents the bootstrap sampling distribution. Based on the 95% confidence interval, the price difference between gas stations with and without stoplights in front is somewhere between $`r format(round(confint(boot_gas_stop, level = 0.95)[1,2],2),scientific=FALSE)` and  $`r format(round(confint(boot_gas_stop, level = 0.95)[1,3],2),scientific=FALSE)`, with 95% confidence.
+
+**Conclusion:**
+
+Because the 95% confidence interval contains 0, indicating that there are both positive and negative differences in gas prices within the confidence interval, the theory that gas stations charge more if they are at a stoplight is not supported.
+
+## **Claim 4**: Gas stations with direct highway access charge more
+
+**Evidence:**
+
+```{r, echo = FALSE, message = FALSE}
+boot_gas_highway = do(10000)*diffmean(Price ~ Highway,data=resample(gas))
+ggplot(boot_gas_highway) + geom_histogram(aes(x=diffmean)) + labs(title = "Bootstrap sampling distribution for difference in mean gas\n prices between gas stations with and without direct highway access", x = "Mean difference", y = "Count")
+
+knitr::kable(confint(boot_gas_highway, level = 0.95))
+```
+
+To collect evidence for the claim, I created 10,000 bootstrap samples from the original dataset. For each bootstrap sample, I calculated the mean difference in gas price for gas stations near highways and not near highways. The histogram above represents the bootstrap sampling distribution. Based on the 95% confidence interval, the price difference between gas stations with direct highway access and no direct highway access is somewhere between $`r format(round(confint(boot_gas_highway, level = 0.95)[1,2],2),scientific=FALSE)` and  $`r format(round(confint(boot_gas_highway, level = 0.95)[1,3],2),scientific=FALSE)`, with 95% confidence.
+
+**Conclusion:**
+
+Because the 95% confidence interval only contains positive values, there is a statistically significant difference between gas prices for gas stations with and without direct highway access. Thus, the theory that "gas stations with direct highway access charge more" is supported.
+
+## **Claim 5**: Shell charges more than all other non-Shell brands.
+
+**Evidence:**
+
+```{r, echo = FALSE, message = FALSE}
+gas = gas %>% 
+  mutate(Shell = ifelse(Name == "Shell","Y","N"))
+
+boot_gas_shell = do(10000)*diffmean(Price ~ Shell,data=resample(gas))
+ggplot(boot_gas_shell) + geom_histogram(aes(x=diffmean)) + labs(title = "Bootstrap sampling distribution for difference in mean gas\n prices between Shell and non-Shell", x = "Mean difference", y = "Count")
+
+knitr::kable(confint(boot_gas_shell, level = 0.95))
+```
+To collect evidence for the claim, I created a new column "Shell" that categorized the dataset between Shell and non-Shell gas stations. Then, I created 10,000 bootstrap samples from this dataset. For each sample, I calculated the mean difference in gas price for Shell and non-Shell gas stations. The histogram represents the bootstrap sampling distribution. Based on the 95% confidence interval displayed above, the price difference between Shell and non-Shell gas stations is somewhere between $`r format(round(confint(boot_gas_shell, level = 0.95)[1,2],2),scientific=FALSE)` and  $`r format(round(confint(boot_gas_shell, level = 0.95)[1,3],2),scientific=FALSE)`. 
+
+**Conclusion:**
+
+Because the 95% confidence interval contains 0, indicating that there are both positive and negative differences in gas prices within the confidence interval, the theory that Shell charges more than all other non-Shell brands is not supported.
+
+# Problem 2: Mercedes S-Class
+
+**Part A:**
+```{r, message = FALSE, output = FALSE, echo=FALSE}
+sclass <- read.csv("sclass.csv")
+```
+
+```{r, echo = FALSE}
+sclass_2011 = sclass %>% 
+  filter(year==2011, trim == "63 AMG")
+
+boot_sclass_2011 = do(10000)*mean(~mileage,data=resample(sclass_2011))
+knitr::kable(confint(boot_sclass_2011, level = 0.95))
+```
+
+Based on the confidence interval displayed above, the average mileage of 2011 S-Class 63 AMGs that were hitting the used-car market when this data was collected is somewhere between `r format(confint(boot_sclass_2011, level = 0.95)[1,2],scientific = FALSE)` miles and `r format(confint(boot_sclass_2011, level = 0.95)[1,3],scientific = FALSE)` miles with 95% confidence.
+
+**Part B:**
+```{r, echo = FALSE}
+sclass_2014 = sclass %>% 
+  filter(year==2014, trim == "550") %>% 
+  mutate(isBlack = ifelse(color == "Black",TRUE,FALSE))
+
+boot_sclass_2014 = do(10000)*prop(~isBlack,data=resample(sclass_2014))
+knitr::kable(confint(boot_sclass_2014, level = 0.95))
+```
+Based on the confidence interval displayed above, the proportion of all 2014 S-Class 550s that were painted black is somewhere between `r round(confint(boot_sclass_2014, level = 0.95)[1,2],2)` and `r round(confint(boot_sclass_2014, level = 0.95)[1,3],2)` with 95% confidence.
+
+# Problem 3: NBC Pilot Survey
+
+## Part A:
+
+**Question:** Is there evidence that "Living with Ed" or "My Name is Earl" consistently produces a higher mean Q1_Happy response among viewers?
+
+```{r,echo=FALSE,message=FALSE,output=FALSE}
+pilot <- read.csv("nbc_pilotsurvey.csv")
+
+ed_earl = pilot %>% 
+  filter(Show == "Living with Ed" | Show == "My Name is Earl")
+```
+
+**Approach:** I first filtered the data set to only include ratings of the shows Living with Ed and My Name is Earl. Then, I created 10,000 bootstrap samples from this dataset. For each sample, I calculated the mean difference in Q1_Happy responses for My Name is Earl and Living with Ed using "diffmean". Lastly, I constructed a 95% confidence interval for the difference in mean viewer response to the Q1_Happy question for these two shows.
+
+```{r,echo=FALSE,message=FALSE}
+boot_ed_earl = do(10000)*diffmean(Q1_Happy ~ Show,data=resample(ed_earl))
+knitr::kable(confint(boot_ed_earl, level = 0.95))
+
+#difference between Earl and Ed
+```
+
+**Results:** According to the confidence interval displayed above, the mean difference in Q1_Happy responses for My Name is Earl and Living with Ed is between `r format(round(confint(boot_ed_earl, level = 0.95)[1,2],2),scientific=FALSE)` and `r format(round(confint(boot_ed_earl, level = 0.95)[1,3],2),scientific=FALSE)`, with 95% confidence.
+
+**Conclusion:** Because we are 95% confident the mean difference in ratings is between `r format(round(confint(boot_ed_earl, level = 0.95)[1,2],2),scientific=FALSE)` and `r format(round(confint(boot_ed_earl, level = 0.95)[1,3],2),scientific=FALSE)`, we cannot conclude with statistical significance that one show produced higher mean Q1_Happy ratings than the other. This is because the confidence interval contains both positive and negative mean differences. 
+
+## Part B:
+
+**Question:** Is there evidence that "The Biggest Loser" or "The Apprentice: Los Angeles" consistently produces a higher mean Q1_Annoyed response among viewers?
+
+```{r,echo=FALSE,message=FALSE,output=FALSE}
+loser_apprentice = pilot %>% 
+  filter(Show == "The Biggest Loser" | Show == "The Apprentice: Los Angeles")
+```
+
+**Approach:** I first filtered the data set to only include ratings of the shows The Biggest Loser and The Apprentice: Los Angeles. Then, I created 10,000 bootstrap samples from this dataset. For each sample, I calculated the mean difference in Q1_Annoyed responses for The Biggest Loser and The Apprentice: Los Angeles using "diffmean". Lastly, I constructed a 95% confidence interval for the difference in mean viewer response to the Q1_Annoyed question for these two shows.
+
+```{r,echo=FALSE,message=FALSE}
+boot_loser_apprentice = do(10000)*diffmean(Q1_Annoyed ~ Show,data=resample(loser_apprentice))
+knitr::kable(confint(boot_loser_apprentice, level = 0.95))
+
+#difference between loser and apprentice
+```
+
+#### Results: 
+According to the confidence interval displayed above, the mean difference in Q1_Annoyed responses for The Biggest Loser and The Apprentice: Los Angeles is between -0.52 and -0.02, with 95% confidence.
+
+#### Conclusion: 
+We are 95% confident the mean difference in ratings is between -0.52 and -0.02. Thus, because the interval only contains negative mean differences in ratings, we can conclude with 95% confidence that The Apprentice: Los Angeles consistently produces a higher mean Q1_Annoyed response compared to The Biggest Loser.
+
+## Part C:
+
+**Question:** What proportion of American TV watchers would we expect to give a response of 4 or greater to the “Q2_Confusing” question for the show "Dancing with the Stars?"
+
+```{r,echo=FALSE,message=FALSE,output=FALSE}
+dancing_stars = pilot %>% 
+  filter(Show == "Dancing with the Stars") %>% 
+  mutate(Confused = ifelse(Q2_Confusing >= 4,TRUE,FALSE))
+```
+
+**Approach:** I first filtered the data set to only include ratings of the show Dancing with the Stars and created a new variable "Confused" that was TRUE if Q2_Confusing was 4 or greater and FALSE if it was less than 4. Then, I created 10,000 bootstrap samples from this dataset. For each sample, I calculated the proportion of Confused values that were TRUE using "prop". Lastly, I constructed a 95% confidence interval for the proportions of responses that were 4 or greater for the “Q2_Confusing” question.
+
+```{r,echo=FALSE,message=FALSE}
+boot_dancing_stars = do(10000)*prop(~Confused,data=resample(dancing_stars))
+knitr::kable(confint(boot_dancing_stars, level = 0.95))
+```
+
+**Results:** According to the confidence interval displayed above, the proportion of responses to the "Q2_Confusing" that are 4 or greater is between `r format(round(confint(boot_dancing_stars, level = 0.95)[1,2],2),scientific=FALSE)` and `r format(round(confint(boot_dancing_stars, level = 0.95)[1,3],2),scientific=FALSE)`, with 95% confidence.
+
+**Conclusion:** We are 95% confident the proportion of responses to the "Q2_Confusing" that are 4 or greater is between `r format(round(confint(boot_dancing_stars, level = 0.95)[1,2],2),scientific=FALSE)` and `r format(round(confint(boot_dancing_stars, level = 0.95)[1,3],2),scientific=FALSE)`. The proportion is estimated to be in the middle of this interval at `r format(round(confint(boot_dancing_stars, level = 0.95)[1,6],2),scientific=FALSE)`.
+
+# Problem 4: Ebay
+
+### Question: 
+Does paid search advertising on Google create extra revenue for EBay?
+
+### Approach: 
+I first created 10,000 bootstrap samples from this dataset. For each sample, I calculated the mean difference in revenue ratio for the treatment group and the control group using "diffmean" - for the treatment group, advertising on Google AdWords for the DMA was paused for a month and for the control group, advertising on Google AdWords continued as before. Lastly, I constructed a 95% confidence interval for the difference in mean revenue ratio for the treatment and control group.
+
+```{r,echo=FALSE,message=FALSE,output=FALSE}
+ebay <- read.csv("ebay.csv")
+boot_ebay = do(10000)*diffmean(rev_ratio ~ adwords_pause,data=resample(ebay))
+knitr::kable(confint(boot_ebay, level = 0.95))
+
+# 1 - 0 (treatment - control) --> control has higher rev_ratio; treatment has lower rev_ratio (Ebay's paid search advertising 
+#is driving extra revenue!!)
+
+#mean(ebay[ebay$adwords_pause == 0,]$rev_ratio)
+#mean(ebay[ebay$adwords_pause == 1,]$rev_ratio)
+
+```
+
+### Results: 
+According to the confidence interval displayed above, the mean difference in revenue ratio for the treatment and control group is between `r format(round(confint(boot_ebay, level = 0.95)[1,2],2),scientific=FALSE)` and `r format(round(confint(boot_ebay, level = 0.95)[1,3],2),scientific=FALSE)`, with 95% confidence.
+
+### Conclusion: 
+
+In conclusion, there is statistically significant evidence that paid search advertising on Google creates extra revenue for EBay. This is because
+we are 95% confident the the mean difference in revenue ratio for the treatment and control group is between `r format(round(confint(boot_ebay, level = 0.95)[1,2],2),scientific=FALSE)` and `r format(round(confint(boot_ebay, level = 0.95)[1,3],2),scientific=FALSE)`. Because the confidence interval only includes negative mean differences, the treatment group (in which advertising was paused) has a systemically lower revenue ratio than the control group.
+
+
