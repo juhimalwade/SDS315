@@ -1,0 +1,107 @@
+---
+title: "Homework 5"
+author: "Juhi Malwade"
+date: "2/27/24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height=4, fig.width=7,fig.align = "left", warning=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+[Github Link](https://github.com/juhimalwade/SDS315.git)
+
+## Problem 1: Iron Bank
+
+```{r, echo=FALSE,message=FALSE}
+library(mosaic)
+
+sim_flags = do(100000)*nflip(n=2021,prob = 0.024)
+
+ggplot(sim_flags) + geom_histogram(aes(x=nflip),binwidth=0.5, fill='pink3') + labs(title="Distribution of Flagged Employees",x="Number of flagged employees",y="Count")
+
+#sum(sim_flags >= 70) / 1000000
+
+```
+
+The null hypothesis I am testing is that the baseline probability that any legal trade flagged by SEC's algorithm is 2.4%. The test statistic being used to measure evidence against the null hypothesis is the number of cases that are flagged out of 2021 cases. The probability distribution of the number of cases flagged out of 2021 total cases (assuming the null hypothesis is true) is plotted above. The p-value, or the probability of observing 70 or more flagged cases assuming the null hypothesis is true, is `r format(sum(sim_flags >= 70) / 1000000, scientific=FALSE)`. The p-value is extremely low and represents a 0.02% chance of observing 70 or more flagged cases due to blind luck. Thus, I reject the null hypothesis because it does not seem plausible that this observation occurred simply due to chance. There is significant evidence that the employees violated federal insider trading laws. 
+
+## Problem 2: Health Inspections
+
+```{r, echo=FALSE,message=FALSE}
+sim_violation = do(100000)*nflip(n=50,prob = 0.03)
+
+ggplot(sim_violation) + geom_histogram(aes(x=nflip), fill='lightblue3') + labs(title="Distribution of Health Code Violations",x="Number of Health Code Violations",y="Count")
+
+#format(sum(sim_violation >= 8) / 1000000,scientific=FALSE)
+```
+
+The null hypothesis I am testing is that, on average, restaurants in the city are cited for health code violations at a 3% baseline rate. The test statistic being used to measure evidence against the null hypothesis is the number of health code violations out of 50 inspections. The probablility distribution of the number of health code violations out of 50 inspections (assuming the null hypothesis is true) is plotted above. The p-value, or the probablility of observing 8 or more violations assuming the null hypothesis is true, is `r format(sum(sim_violation >= 8) / 1000000,scientific=FALSE)`. The p-value is extremely low and represents a `r format(sum(sim_violation >= 8) / 10000,scientific=FALSE)`% chance of observing 8 or more violations due to blind luck. Thus, Gourmet Bites' violations likely did not occur simply due to random issues - there is significant evidence their health code violations are indeed much higher than the citywide average of 3% and action should be taken against them.
+
+## Problem 3: LLM watermarking
+### Part A: The null or reference distribution
+
+```{r,echo=FALSE,message=FALSE,output=FALSE}
+library(tibble)
+library(ggplot2)
+sentences <- readLines(con = "brown_sentences.txt")
+sentences <- tibble(sentence = sentences)
+letter_freq <- read.csv("letter_frequencies(2).csv")
+
+
+chi_sq = rep(0,nrow(sentences))
+calculate_chi_squared = function(sentence, freq_table) {
+  
+  # Ensure letter frequencies are normalized and sum to 1
+  freq_table$Probability = freq_table$Probability / sum(freq_table$Probability)
+  
+  # Remove non-letters and convert to uppercase
+  clean_sentence = gsub("[^A-Za-z]", "", sentence)
+  clean_sentence = toupper(clean_sentence)
+  
+  # Count the occurrences of each letter in the sentence
+  observed_counts = table(factor(strsplit(clean_sentence, "")[[1]], levels = freq_table$Letter))
+  
+  # Calculate expected counts
+  total_letters = sum(observed_counts)
+  expected_counts = total_letters * freq_table$Probability
+  
+  # Chi-squared statistic
+  chi_squared_stat = sum((observed_counts - expected_counts)^2 / expected_counts)
+  
+  return(chi_squared_stat)
+}
+
+for(i in 1:nrow(sentences)) {
+  chi_sq[i] = calculate_chi_squared(sentences[i,], letter_freq)
+}
+sentences = sentences %>% 
+  mutate("chi_sq" = chi_sq)
+```
+
+```{r,echo=FALSE,message=FALSE}
+ggplot(sentences) + geom_histogram(aes(x=chi_sq), ,col="gray16") + labs(title = "Distribution of Chi-squared Statistics")
+```
+The graph above shows the null distribution -  the range of chi-squared values you might expect to see in normal English sentences based on the predefined letter frequency distribution. 
+
+### Part B: Checking for a watermark
+
+```{r,echo=FALSE,message=FALSE,}
+p_values = rep(0,10)
+
+test_sentences <- tibble(
+  sentence = c("She opened the book and started to read the first chapter, eagerly anticipating what might come next.","Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.","The museum’s new exhibit features ancient artifacts from various civilizations around the world.","He carefully examined the document, looking for any clues that might help solve the mystery.","The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.","Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.","The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.","They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.", "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.","Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations.")
+)
+
+for(i in 1:10){
+  x = calculate_chi_squared(test_sentences[i,],letter_freq)
+  p_values[i] = sum(sentences$chi_sq>=x) / nrow(sentences)
+}
+
+library(knitr)
+test_sentences = test_sentences %>% 
+  mutate("p-value" = p_values)
+knitr::kable(test_sentences)
+```
+
+Based on the p-values of the sentences above, the sentence "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland" was produced by an LLM. This is because its p-value is extremely low at `r round(test_sentences[6,2],5)`, indicating that under the null hypothesis that the sentence follows the "typical" English letter distribution, it is extremely rare to observe a sentence with this particular letter distribution. Thus, there is significant evidence that this sentence was not written by a human but rather an LLM.
