@@ -1,0 +1,208 @@
+---
+title: "SDS315_HW9"
+author: "Juhi Malwade"
+date: "2024-04-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height=4, fig.width=7,fig.align = "left", warning=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60))
+```
+
+[Github Link](https://github.com/juhimalwade/SDS315.git)
+
+## Problem 1: Get out to vote
+
+### Part A: How much more likely are GOTV call recipients to have voted in 1998? 
+```{r, echo=FALSE,message=FALSE, results='hide'}
+library(mosaic)
+
+turnout <- read.csv("turnout.csv")
+
+#The proportion of those receiving a GOTV call who voted in 1998
+#sum(turnout$GOTV_call==1 & turnout$voted1998==1) / sum(turnout$GOTV_call == 1)
+
+#The sample proportion of those not receiving a GOTV call who voted in 1998
+#sum(turnout$GOTV_call==0 & turnout$voted1998 == 1) / sum(turnout$GOTV_call == 0)
+
+#difference in proportions of 1998 voters who did and did not receive a call
+prop(voted1998 ~ GOTV_call, data=turnout, success=1)
+
+#CHANGE TO 10000 BEFORE TURNING IN!!!
+boot_1998 = do(10000)*diffprop(voted1998==1 ~ GOTV_call, data = resample(turnout))
+confint(boot_1998, level=0.95)
+```
+The proportion of those receiving a GOTV call who voted in 1998 is `r round(prop(voted1998 ~ GOTV_call, data=turnout, success=1)[1][1],3)`. The proportion of those not receiving a GOTV call who voted in 1998 is `r round(prop(voted1998 ~ GOTV_call, data=turnout, success=1)[2][1],3)`. The 95% confidence interval for the difference in these two proportions is `r round(confint(boot_1998, level=0.95)[1,2],3)` to `r round(confint(boot_1998, level=0.95)[1,3],3)`.
+
+<br>
+
+### Part B: Considering confounders
+
+#### Evidence voting in 1996 is a confounding variable
+
+```{r, echo=FALSE,message=FALSE}
+library(knitr)
+
+#prop(voted1998 ~ voted1996, data=turnout, success=1)
+boot_1996 = do(10000)*diffprop(voted1998==1 ~ voted1996, data = resample(turnout))
+kable(confint(boot_1996, level=0.95),caption = "95% Confidence Interval")
+```
+
+The 95% confidence interval displayed above represents the difference in proportions of 1998 voters who did and did not vote in the 1996 election. The interval is entirely positive and does not contain zero, indicating we are 95% confident that the proportion of 1998 voters among those who voted in 1996 is greater than the proportion of 1998 voters among those who did not vote in 1996. This indicates that voting in 1996 is a confounding variable that can make someone more likely to have voted in 1998. 
+
+```{r, echo=FALSE,message=FALSE}
+#MIGHT WANNA SWITHC VOTED1996 AND GOTV_call!!
+#prop(GOTV_call ~ voted1996, data=turnout, success=1)
+boot_1996_call = do(10000)*diffprop(GOTV_call==1 ~ voted1996, data = resample(turnout))
+kable(confint(boot_1996_call, level=0.95),caption = "95% Confidence Interval")
+```
+
+The second 95% confidence interval above displays the difference in proportion of receiving a call among those who did and did not vote in the 1996 election. Because the confidence interval is entirely positive and does not contain zero, it indicates that prior 1996 voters were more likely to receive a call in 1998 encouraging them to vote again. Thus, voting in 1998 may not be solely caused by receiving a call, since receiving a call is also correlated to whether or not someone voted in 1996. This strengthens the claim that voting in 1996 is a confounding variable.
+
+<br>
+
+#### Evidence age is a confounding variable
+
+```{r, echo=FALSE,message=FALSE}
+#mean(AGE ~ voted1998, data=turnout)
+
+boot_age = do(10000)*diffmean(AGE ~ voted1998, data = resample(turnout))
+kable(confint(boot_age, level=0.95),caption = "95% Confidence Interval")
+```
+
+The 95% confidence interval above displays the mean difference in age among those who did and did not vote in the 1998 election. Because the confidence interval is entirely positive and does not contain zero, it indicates that we are 95% confidence that the mean age of voters in the 1998 election is greater than the mean age of non-voters in the 1998 election. This indicates age is a confounding variable that can make someone more likely to have voted in 1998.
+
+```{r, echo=FALSE,message=FALSE}
+#mean(AGE ~ GOTV_call, data=turnout)
+
+boot_age_call = do(10000)*diffmean(AGE ~ GOTV_call, data = resample(turnout))
+kable(confint(boot_age_call, level=0.95),caption = "95% Confidence Interval")
+```
+
+In addition, the 95% confidence interval above displays the mean difference in age among those who did and did not receive a call prior to the 1998 election. Because the confidence interval is entirely positive and does not contain zero, it indicates we are 95% confident that older people are more likely to receive a call than younger people. Thus, voting in 1998 may not be caused solely by receiving a call, since receiving a call is also correlated to how old the person is. This strengthens the claim that age is confounding variable.
+
+<br>
+
+#### Evidence major party affiliation is a confounding variable
+
+```{r, echo=FALSE,message=FALSE}
+#prop(voted1998 ~ MAJORPTY, data=turnout, success=1)
+boot_majorpty = do(10000)*diffprop(voted1998==1 ~ MAJORPTY, data = resample(turnout))
+kable(confint(boot_majorpty, level=0.95),caption = "95% Confidence Interval")
+```
+ The 95% confidence interval above represents the difference in proportion of 1998 voters who were and were not affiliated with a major political party. Because the confidence interval is entirely positive and does not contain zero, it indicates we are 95% confident that the proportion of 1998 voters among those affiliated with a major political party is greater than the proportion of 1998 voters among those not affiliated with a major political party. This indicates that affiliation with a major political party is a confounding variable that can make someone more likely to have voted in 1998.
+
+```{r, echo=FALSE,message=FALSE}
+#prop(GOTV_call ~ MAJORPTY, data=turnout, success=1)
+boot_majorpty_call = do(10000)*diffprop(MAJORPTY ~ GOTV_call, data = resample(turnout))
+kable(confint(boot_majorpty_call, level=0.95),caption = "95% Confidence Interval")
+```
+
+The 95% confidence interval above represents the difference in proportion of being registered for a major party among those who did and did not receive a call. Because the confidence interval is entirely positive and does not contain zero, it indicates that we are 95% confident that major party affiliates were more likely to receive a call encouraging them to vote compared to non-major party affiliates. Thus, voting in 1998 may not be solely caused by receiving a call, since receiving a call is also correlated with whether or not someone is registered as a member of a major party.
+
+<br>
+
+### Part C: Matching
+
+```{r, echo=FALSE,message=FALSE}
+library(MatchIt)
+
+turnout_matched = matchit(GOTV_call ~ voted1996 + AGE + MAJORPTY,
+                                 data = turnout, ratio=5) %>%
+  match.data
+
+prop(voted1996~GOTV_call,data=turnout_matched)
+
+
+# mean(AGE~GOTV_call,data=turnout_matched)
+# prop(MAJORPTY~GOTV_call,data=turnout_matched)
+
+```
+
+The table above shows that voting in 1996 is no longer a confounder after matching because the proportion of those receiving a GOTV call who voted in 1996 is the same as the proportion of those not receiving a GOTV call who also voted in 1996. Thus, major party is no longer a confounder.
+
+```{r, echo=FALSE,message=FALSE}
+mean(AGE~GOTV_call,data=turnout_matched)
+```
+
+Similarly, after matching the mean age among those who did and did not receive a call were approximately the same. Thus, age is no longer a confounder.
+
+
+```{r, echo=FALSE,message=FALSE}
+prop(MAJORPTY~GOTV_call,data=turnout_matched)
+```
+
+And finally, after matching, the proportion of those receiving a GOTV call who registered for a major party was the same as the proportion of those not receiving a GOTV call who also registered for a major party. Thus, major party is no longer a confounder.
+
+
+```{r,echo=FALSE,message=FALSE}
+
+boot_1998_matched = do(10000)*diffprop(voted1998==1 ~ GOTV_call, data = resample(turnout_matched))
+kable(confint(boot_1998_matched, level=0.95),caption = "95% Confidence Interval")
+```
+
+After matching and accounting for confounders, the proportion of those receiving a GOTV call who voted in 1998 is `r round(prop(voted1998 ~ GOTV_call, data=turnout_matched, success=1)[1][1],3)`. The proportion of those not receiving a GOTV call who voted in 1998 is `r round(prop(voted1998 ~ GOTV_call, data=turnout_matched, success=1)[2][1],3)`. The 95% confidence interval for the difference in these two proportions is `r round(confint(boot_1998_matched, level=0.95)[1,2],3)` to `r round(confint(boot_1998_matched, level=0.95)[1,3],3)`.
+
+In conclusion, the GOTV call has a very small effect on the likelihood of voting in the 1998 election. This effect is significantly smaller than initially estimated after accounting for confounding variables.
+
+<br>
+
+## Problem 2: Manufacturing flaws in circuit boards
+
+### Part A: 
+
+```{r, echo=FALSE,message=FALSE, results='hide'}
+solder <- read.csv('solder.csv')
+library(ggplot2)
+
+#table(solder$Opening)
+#sum(solder[solder$Opening == "L",]$skips)
+
+ggplot(solder) + geom_col(aes(x=Opening,y=skips)) + labs(title = "Total Skips by Opening Size")
+
+```
+
+The plot above shows the relationship between opening size and total number of skips. The small opening size had the greatest number of skips (`r sum(solder[solder$Opening == "S",]$skips)` skips), the medium opening size had `r sum(solder[solder$Opening == "M",]$skips)` skips, and the large opening had the least number of skips (`r sum(solder[solder$Opening == "L",]$skips)` skips). All three opening types are equally represented in the dataset (300 of each type). Thus, there is a relation between opening size and total number of skips.
+
+```{r, echo=FALSE,message=FALSE, results='hide'}
+#The second should provide evidence that the thickness of the alloy
+#used for soldering is related to the number of skips
+
+# table(solder$Solder)
+# sum(solder[solder$Solder == "Thick",]$skips)
+# sum(solder[solder$Solder == "Thin",]$skips)
+
+ggplot(solder) + geom_col(aes(x=Solder,y=skips)) + labs(title = "Total Skips by Thickness of Alloy for Soldering")
+
+```
+
+The plot above shows the relationship between thickness of the alloy for soldering and total number of skips. The thin alloy had the more skips (`r sum(solder[solder$Solder == "Thin",]$skips)` skips) than the thick alloy (`r sum(solder[solder$Solder == "Thick",]$skips)` skips). Both thicknesses of allow are equally represented in the dataset (450 of each type). Thus, there is a relation between thickness of alloy and total number of skips.
+
+<br>
+
+### Part B: 
+
+```{r, echo=FALSE,message=FALSE}
+lm_skips <- lm(skips ~ Opening + Solder + Solder:Opening, data = solder)
+
+library(moderndive)
+get_regression_table(lm_skips, conf.level = 0.95, digits=2)
+```
+
+<br>
+
+### Part C:
+
+* The baseline number of skips for a large opening and thick alloy is 0.39. 
+* The main effect for having a medium opening is 2.41 skips, which is the effect a medium opening has in isolation. 
+* The main effect for having a small opening is 5.13 skips, which is the effect a small opening has in isolation. 
+* The main effect for using thin alloy is 2.28 skips, which is the effect using thin alloy has in isolation.
+* The interaction effect for a medium opening and thin alloy is -0.74 skips. This means that soldering with a medium opening and thin alloy yields average skips that are -0.74 skips less than what you would expect from summing the individual “isolated” effects of the two variables
+* The interaction effect for a small opening and thin alloy is 9.65 skips. This means that soldering with a small opening and thin alloy yields average skips that are 9.65 skips more than what you would expect from summing the individual “isolated” effects of the two variables
+
+<br>
+
+### Part D:
+The best combination is using a medium opening and thin alloy. The goal is to minimize the number of skips, so the best combination is the one with the smallest estimated coefficient, which in this case is a coefficient of -0.74.
+
+
